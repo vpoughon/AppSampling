@@ -10,7 +10,8 @@ otb_module(AppSampling
     OTBStatistics
     OTBIOXML
     OTBCommon
-    OTBAppClassification
+    OTBSupervised
+    OTBOpenCV
   DESCRIPTION
     "${DOCUMENTATION}"
 )
