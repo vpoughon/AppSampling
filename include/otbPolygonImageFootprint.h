@@ -88,7 +88,34 @@ public: // Software guide says this should be protected, but it won't compile
   }
 
 protected:
-  void ThreadedGenerateData(const typename Self::OutputImageRegionType&, itk::ThreadIdType)
+
+  // Internal method for filtering polygons inside the current thread region
+  otb::org::Layer ApplyPolygonsSpatialFilter(const TInputImage& image, const typename Self::OutputImageRegionType& threadRegion)
+  {
+    ImageType::IndexType urIndex;
+    ImageType::IndexType llIndex;
+      
+    // ogr method for image region -> spatial filter convertion?
+    // ex: SetSpatialFilterRegion(region)
+    
+    urIndex[0] = startX + sizeX;
+    urIndex[1] = startY + sizeY;
+    llIndex[0] = startX;
+    llIndex[1] = startY;        
+        
+    itk::Point<double, 2> ulPoint;
+    itk::Point<double, 2> lrPoint;
+        
+    image->TransformIndexToPhysicalPoint(urIndex, lrPoint);
+    image->TransformIndexToPhysicalPoint(llIndex, ulPoint);  
+        
+    otb::ogr::Layer filtered = m_polygons->GetLayer(0);
+    filtered.SetSpatialFilterRect(ulPoint[0], ulPoint[1], lrPoint[0], lrPoint[1]);         
+        
+    return filtered;
+  }
+
+  void ThreadedGenerateData(const typename Self::OutputImageRegionType& threadRegion, itk::ThreadIdType)
   {
     // Enable progress reporting
     //itk::ProgressReporter progress(this, threadId, threadRegion.GetNumberOfPixels());
@@ -100,7 +127,9 @@ protected:
     // This filter only needs the image metadata
     input_image->UpdateOutputInformation(); 
 
-    // Extract polygons in threadRegion
+    // Consider only polygons in threadRegion
+    otb::ogr::Layer filteredPolygons = ApplyPolygonsSpatialFilter(threadRegion);
+
     // Make iterator for image over threadRegion
     // Loop across the features in the layer
       // Loop accross pixels in the polygon and do stats
