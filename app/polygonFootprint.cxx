@@ -88,6 +88,8 @@ private:
     filter->GetFilter()->SetPolygons(polygons);
     // if provided
       // filter.SetMask(
+      //
+    filter->SetNumberOfThreads(1);
 
     filter->Update();
   }

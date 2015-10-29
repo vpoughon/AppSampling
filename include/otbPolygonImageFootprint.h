@@ -3,6 +3,7 @@
 #include <map>
 #include "otbPersistentImageFilter.h"
 #include "otbOGRDataSourceWrapper.h"
+#include <iostream>
 
 namespace otb
 {
@@ -65,7 +66,8 @@ public:
   }
 
 public: // Software guide says this should be protected, but it won't compile
-  PolygonImageFootprintFilter() {}
+  PolygonImageFootprintFilter() {
+  }
 
   virtual ~PolygonImageFootprintFilter() {}
 
@@ -90,29 +92,26 @@ public: // Software guide says this should be protected, but it won't compile
 protected:
 
   // Internal method for filtering polygons inside the current thread region
-  otb::org::Layer ApplyPolygonsSpatialFilter(const TInputImage& image, const typename Self::OutputImageRegionType& threadRegion)
+  void ApplyPolygonsSpatialFilter(const TInputImage* image, const typename Self::OutputImageRegionType& requestedRegion)
   {
-    ImageType::IndexType urIndex;
-    ImageType::IndexType llIndex;
-      
-    // ogr method for image region -> spatial filter convertion?
-    // ex: SetSpatialFilterRegion(region)
-    
-    urIndex[0] = startX + sizeX;
-    urIndex[1] = startY + sizeY;
-    llIndex[0] = startX;
-    llIndex[1] = startY;        
-        
-    itk::Point<double, 2> ulPoint;
-    itk::Point<double, 2> lrPoint;
-        
-    image->TransformIndexToPhysicalPoint(urIndex, lrPoint);
-    image->TransformIndexToPhysicalPoint(llIndex, ulPoint);  
-        
-    otb::ogr::Layer filtered = m_polygons->GetLayer(0);
-    filtered.SetSpatialFilterRect(ulPoint[0], ulPoint[1], lrPoint[0], lrPoint[1]);         
-        
-    return filtered;
+    typename TInputImage::IndexType lowerIndex = requestedRegion.GetIndex();
+    typename TInputImage::IndexType upperIndex = requestedRegion.GetUpperIndex();
+
+    itk::Point<double, 2> lowerPoint;
+    itk::Point<double, 2> upperPoint;
+
+    image->TransformIndexToPhysicalPoint(upperIndex, upperPoint);
+    image->TransformIndexToPhysicalPoint(lowerIndex, lowerPoint);  
+
+    // TODO add parameter to choose layer number, don't hardcode 0
+    m_polygons->GetLayer(0).SetSpatialFilterRect(lowerPoint[0], lowerPoint[1], upperPoint[0], upperPoint[1]);         
+  }
+
+  void BeforeThreadedGenerateData()
+  {
+    TInputImage* inputImage = const_cast<TInputImage*>(this->GetInput());
+    const typename TInputImage::RegionType& requestedRegion = inputImage->GetRequestedRegion();
+    ApplyPolygonsSpatialFilter(inputImage, requestedRegion);
   }
 
   void ThreadedGenerateData(const typename Self::OutputImageRegionType& threadRegion, itk::ThreadIdType)
@@ -122,13 +121,8 @@ protected:
 
     // Retrieve inputs
     // const cast is nominal apparently
+    // raw pointer?
     TInputImage* input_image = const_cast<TInputImage*>(this->GetInput());
-
-    // This filter only needs the image metadata
-    input_image->UpdateOutputInformation(); 
-
-    // Consider only polygons in threadRegion
-    otb::ogr::Layer filteredPolygons = ApplyPolygonsSpatialFilter(threadRegion);
 
     // Make iterator for image over threadRegion
     // Loop across the features in the layer
@@ -140,8 +134,15 @@ protected:
     // use otb::ogr::DataSource for shape file
   }
 
+  void AfterThreadedGenerateData()
+  {
+  }
+
 private:
   typename TInputMask::Pointer m_mask;
+
+  // Polygons layer of the current tile
+  // TODO this could be a second itk::DataObject input to the filter
   otb::ogr::DataSource::Pointer m_polygons;
 
   // Temporary statistics
@@ -149,6 +150,7 @@ private:
 
   // Final result
   PolygonImageFootprintStatistics::Pointer m_resultPolygonStatistics;
+
 };
 
 } // namespace otb
