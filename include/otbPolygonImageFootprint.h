@@ -3,6 +3,7 @@
 #include <map>
 #include "otbPersistentImageFilter.h"
 #include "otbOGRDataSourceWrapper.h"
+#include "itkImageRegionIterator.h"
 #include <iostream>
 
 namespace otb
@@ -61,12 +62,19 @@ public:
     this->m_mask = inputMask;
   }
 
+  void setLayerIndex(vcl_size_t index)
+  {
+    m_layerIndex = index;
+  }
+
   void GetResult()
   {
   }
 
 public: // Software guide says this should be protected, but it won't compile
-  PolygonImageFootprintFilter() {
+  PolygonImageFootprintFilter() :
+    m_layerIndex(0)
+  {
   }
 
   virtual ~PolygonImageFootprintFilter() {}
@@ -85,13 +93,11 @@ public: // Software guide says this should be protected, but it won't compile
     m_resultPolygonStatistics = PolygonImageFootprintStatistics::New();
   }
 
-  virtual void Synthetize()
-  {
-  }
+  virtual void Synthetize() {}
 
 protected:
 
-  // Internal method for filtering polygons inside the current thread region
+  // Internal method for filtering polygons inside the current requested region
   void ApplyPolygonsSpatialFilter(const TInputImage* image, const typename Self::OutputImageRegionType& requestedRegion)
   {
     typename TInputImage::IndexType lowerIndex = requestedRegion.GetIndex();
@@ -103,8 +109,7 @@ protected:
     image->TransformIndexToPhysicalPoint(upperIndex, upperPoint);
     image->TransformIndexToPhysicalPoint(lowerIndex, lowerPoint);  
 
-    // TODO add parameter to choose layer number, don't hardcode 0
-    m_polygons->GetLayer(0).SetSpatialFilterRect(lowerPoint[0], lowerPoint[1], upperPoint[0], upperPoint[1]);         
+    m_polygons->GetLayer(m_layerIndex).SetSpatialFilterRect(lowerPoint[0], lowerPoint[1], upperPoint[0], upperPoint[1]);         
   }
 
   void BeforeThreadedGenerateData()
@@ -112,6 +117,37 @@ protected:
     TInputImage* inputImage = const_cast<TInputImage*>(this->GetInput());
     const typename TInputImage::RegionType& requestedRegion = inputImage->GetRequestedRegion();
     ApplyPolygonsSpatialFilter(inputImage, requestedRegion);
+  }
+  
+  // ImageRegion containing the polygon feature
+  // This should really be otb::ogr::Feature::GetEnvelope()
+  //                   and otb::Image::EnvelopeToRegion()
+  typename TInputImage::RegionType FeatureBoundingRegion(const TInputImage* image, const otb::ogr::Feature& feature) const
+  {
+    // otb::ogr wrapper is incomplete and leaky abstraction is inevitable here
+    OGRGeometry* geom = feature.ogr().GetGeometryRef();
+
+    // Bounding envelope of feature
+    OGREnvelope envelope;
+    geom->getEnvelope(&envelope);
+    
+    itk::Point<double, 2> lowerPoint, upperPoint;
+    lowerPoint[0] = envelope.MinX;
+    lowerPoint[1] = envelope.MinY;
+    upperPoint[0] = envelope.MaxX;
+    upperPoint[1] = envelope.MaxY;
+
+    // Convert to ImageRegion
+    typename TInputImage::IndexType lowerIndex;
+    typename TInputImage::IndexType upperIndex;
+
+    image->TransformPhysicalPointToIndex(lowerPoint, lowerIndex);
+    image->TransformPhysicalPointToIndex(upperPoint, upperIndex);
+
+    typename TInputImage::RegionType region;
+    region.SetIndex(lowerIndex);
+    region.SetUpperIndex(upperIndex);
+    return region;
   }
 
   void ThreadedGenerateData(const typename Self::OutputImageRegionType& threadRegion, itk::ThreadIdType)
@@ -122,14 +158,36 @@ protected:
     // Retrieve inputs
     // const cast is nominal apparently
     // raw pointer?
-    TInputImage* input_image = const_cast<TInputImage*>(this->GetInput());
+    TInputImage* inputImage = const_cast<TInputImage*>(this->GetInput());
 
-    // Make iterator for image over threadRegion
-    // Loop across the features in the layer
-      // Loop accross pixels in the polygon and do stats
-      // Count number of pixels in polygon
-      // Add count to class total
-      // Add count to total number of pixels
+    // Loop across the features in the layer (filtered by requested region in BeforeTGD already)
+    otb::ogr::Layer::const_iterator featIt = m_polygons->GetLayer(m_layerIndex).begin(); 
+    for(; featIt!=m_polygons->GetLayer(m_layerIndex).end(); featIt++)
+    {
+      // Compute the considered region (optimization)
+      // i.e. the intersection of thread region and polygon's bounding box
+      // This need not be done in ThreadedGenerateData and could be
+      // pre-processed and cached before filter execution if needed
+      typename TInputImage::RegionType consideredRegion = FeatureBoundingRegion(inputImage, *featIt);
+      bool regionNotEmpty = consideredRegion.Crop(threadRegion);
+
+      if (regionNotEmpty)
+      {
+        // For pixels in consideredRegion
+        itk::ImageRegionIterator<TInputImage> it(inputImage, consideredRegion);
+        for (it.GoToBegin(); !it.IsAtEnd(); ++it)
+        {
+          // itk::Point<double, 2> point;
+          // inputImage->TransformIndexToPhysicalPoint(it.GetIndex(), point);           
+
+          // Test if pixel is in feature
+          // Test if pixel is in mask
+          // Count number of pixels in current feature
+          // Add count to class total
+          // Add count to total number of pixels
+        }
+      }
+    }
 
     // use otb::ogr::DataSource for shape file
   }
@@ -151,6 +209,8 @@ private:
   // Final result
   PolygonImageFootprintStatistics::Pointer m_resultPolygonStatistics;
 
+  // Layer to use in the shape file, default to 0
+  vcl_size_t m_layerIndex;
 };
 
 } // namespace otb
