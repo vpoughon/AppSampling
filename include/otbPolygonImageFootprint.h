@@ -1,4 +1,5 @@
-//#ifndef __otbPolygonImageFootprint_
+#ifndef __otbPolygonImageFootprint__
+#define __otbPolygonImageFootprint__
 
 #include <map>
 #include "otbPersistentImageFilter.h"
@@ -152,9 +153,6 @@ protected:
 
   void ThreadedGenerateData(const typename Self::OutputImageRegionType& threadRegion, itk::ThreadIdType)
   {
-    // Enable progress reporting
-    //itk::ProgressReporter progress(this, threadId, threadRegion.GetNumberOfPixels());
-
     // Retrieve inputs
     // const cast is nominal apparently
     // raw pointer?
@@ -174,18 +172,41 @@ protected:
       if (regionNotEmpty)
       {
         // For pixels in consideredRegion
-        itk::ImageRegionIterator<TInputImage> it(inputImage, consideredRegion);
-        for (it.GoToBegin(); !it.IsAtEnd(); ++it)
+        itk::ImageRegionIterator<TInputImage> itImage(inputImage, consideredRegion);
+        itk::ImageRegionIterator<TInputImage> itMask;
+        if (m_mask)
         {
-          // itk::Point<double, 2> point;
-          // inputImage->TransformIndexToPhysicalPoint(it.GetIndex(), point);           
-
-          // Test if pixel is in feature
-          // Test if pixel is in mask
-          // Count number of pixels in current feature
-          // Add count to class total
-          // Add count to total number of pixels
+          itMask = itk::ImageRegionIterator<TInputImage>(m_mask, consideredRegion);
         }
+        for (itImage.GoToBegin(); !itImage.IsAtEnd(); ++itImage)
+        {
+          if (m_mask)
+          {
+            ++itMask;
+          }
+          // Test if pixel is in mask
+          if (m_mask && itMask.Value() == 1)
+          {
+            itk::Point<double, 2> point;
+            inputImage->TransformIndexToPhysicalPoint(itImage.GetIndex(), point);
+            // Test if point is in feature
+            // ->Test if the current pixel is in a polygon hole
+            // Count number of pixels in current feature
+            // Add count to class total
+            // Add count to total number of pixels
+            //nbOfPixelsInGeom++;
+            //nbPixelsGlobal++;
+          }
+        }
+
+        //Class name recuperation
+        //int className = featIt->ogr().GetFieldAsInteger(GetParameterString("cfield").c_str());
+
+        //Counters update, number of pixel in each classes and in each polygons
+        //polygon[featIt->ogr().GetFID()] += nbOfPixelsInGeom;
+
+        //Generation of a random number for the sampling in a polygon where we only need one pixel, it's choosen randomly
+        //elmtsInClass[className] = elmtsInClass[className] + nbOfPixelsInGeom;
       }
     }
 
@@ -217,3 +238,4 @@ private:
 
 //#include "otbPolygonImageFootprint.txx"
 
+#endif
