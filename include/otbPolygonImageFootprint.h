@@ -162,8 +162,8 @@ protected:
     otb::ogr::Layer::const_iterator featIt = m_polygons->GetLayer(m_layerIndex).begin(); 
     for(; featIt!=m_polygons->GetLayer(m_layerIndex).end(); featIt++)
     {
-      // Compute the considered region (optimization)
-      // i.e. the intersection of thread region and polygon's bounding box
+      // Optimization: compute the intersection of thread region and polygon bounding region,
+      // called "considered region" here.
       // This need not be done in ThreadedGenerateData and could be
       // pre-processed and cached before filter execution if needed
       typename TInputImage::RegionType consideredRegion = FeatureBoundingRegion(inputImage, *featIt);
@@ -171,6 +171,8 @@ protected:
 
       if (regionNotEmpty)
       {
+        //OGRPolygon* inPolygon = dynamic_cast<OGRPolygon *>(geom);
+        //OGRLinearRing* exteriorRing = inPolygon->getExteriorRing();
         // For pixels in consideredRegion
         itk::ImageRegionIterator<TInputImage> itImage(inputImage, consideredRegion);
         itk::ImageRegionIterator<TInputImage> itMask;
@@ -184,18 +186,19 @@ protected:
           {
             ++itMask;
           }
-          // Test if pixel is in mask
+          // If pixel is in mask
           if (m_mask && itMask.Value() == 1)
           {
             itk::Point<double, 2> point;
             inputImage->TransformIndexToPhysicalPoint(itImage.GetIndex(), point);
-            // Test if point is in feature
             // ->Test if the current pixel is in a polygon hole
-            // Count number of pixels in current feature
-            // Add count to class total
-            // Add count to total number of pixels
-            //nbOfPixelsInGeom++;
-            //nbPixelsGlobal++;
+            // If point is in feature
+            //if(exteriorRing->isPointInRing(&pointOGR, TRUE) && isNotInHole)
+            //{
+              // Count
+              //nbOfPixelsInGeom++;
+              //nbPixelsGlobal++;
+            //}                    
           }
         }
 
@@ -209,8 +212,6 @@ protected:
         //elmtsInClass[className] = elmtsInClass[className] + nbOfPixelsInGeom;
       }
     }
-
-    // use otb::ogr::DataSource for shape file
   }
 
   void AfterThreadedGenerateData()
