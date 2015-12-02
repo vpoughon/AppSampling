@@ -119,26 +119,16 @@ protected:
     const typename TInputImage::RegionType& requestedRegion = inputImage->GetRequestedRegion();
     ApplyPolygonsSpatialFilter(inputImage, requestedRegion);
   }
-  
-  // ImageRegion containing the polygon feature
-  // This should really be otb::ogr::Feature::GetEnvelope()
-  //                   and otb::Image::EnvelopeToRegion()
-  typename TInputImage::RegionType FeatureBoundingRegion(const TInputImage* image, const otb::ogr::Feature& feature) const
-  {
-    // otb::ogr wrapper is incomplete and leaky abstraction is inevitable here
-    OGRGeometry* geom = feature.ogr().GetGeometryRef();
 
-    // Bounding envelope of feature
-    OGREnvelope envelope;
-    geom->getEnvelope(&envelope);
-    
+  // Convert an OGR ImageRegion
+  typename TInputImage::RegionType EnvelopeToRegion(const TInputImage* image, OGREnvelope envelope) const
+  {
     itk::Point<double, 2> lowerPoint, upperPoint;
     lowerPoint[0] = envelope.MinX;
     lowerPoint[1] = envelope.MinY;
     upperPoint[0] = envelope.MaxX;
     upperPoint[1] = envelope.MaxY;
 
-    // Convert to ImageRegion
     typename TInputImage::IndexType lowerIndex;
     typename TInputImage::IndexType upperIndex;
 
@@ -149,6 +139,15 @@ protected:
     region.SetIndex(lowerIndex);
     region.SetUpperIndex(upperIndex);
     return region;
+  }
+  
+  // ImageRegion containing the polygon feature
+  typename TInputImage::RegionType FeatureBoundingRegion(const TInputImage* image, const otb::ogr::Feature& feature) const
+  {
+    // otb::ogr wrapper is incomplete and leaky abstraction is inevitable here
+    OGREnvelope envelope;
+    feature.GetGeometry()->getEnvelope(&envelope);
+    return EnvelopeToRegion(image, envelope);
   }
 
   void ThreadedGenerateData(const typename Self::OutputImageRegionType& threadRegion, itk::ThreadIdType)
@@ -198,7 +197,7 @@ protected:
               // Count
               //nbOfPixelsInGeom++;
               //nbPixelsGlobal++;
-            //}                    
+            //}
           }
         }
 
