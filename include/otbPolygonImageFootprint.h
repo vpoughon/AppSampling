@@ -4,6 +4,7 @@
 #include <map>
 #include "otbPersistentImageFilter.h"
 #include "otbOGRDataSourceWrapper.h"
+#include "otbMaskedIteratorDecorator.h"
 #include "itkImageRegionIterator.h"
 #include <iostream>
 
@@ -167,6 +168,9 @@ protected:
       // pre-processed and cached before filter execution if needed
       typename TInputImage::RegionType consideredRegion = FeatureBoundingRegion(inputImage, *featIt);
       bool regionNotEmpty = consideredRegion.Crop(threadRegion);
+
+      otb::MaskedIteratorDecorator<itk::ImageRegionIterator<TInputImage> > it(m_mask, inputImage, consideredRegion);
+      it.SetMask(m_mask);
 
       if (regionNotEmpty)
       {
