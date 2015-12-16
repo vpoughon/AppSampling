@@ -72,7 +72,7 @@ public:
     //m_isAtBegin = true;
     this->Superclass::GoToBegin();
     this->m_itMask.GoToBegin();
-    while (!this->IsAtEnd() && !m_itMask->IsAtEnd() && m_itMask->Value() == 0)
+    while (!this->IsAtEnd() && !m_itMask.IsAtEnd() && m_itMask.Value() == 0)
     {
       this->Superclass::operator++();
       this->m_itMask.operator++();
@@ -85,10 +85,10 @@ public:
     this->m_itMask.GoToEnd();
   }
 
-  void IsAtBegin() const
+  bool IsAtBegin() const
   {
     // Current position is the actual beginning
-    if (this->IsAtBegin() || m_itMask->IsAtBegin())
+    if (this->IsAtBegin() || m_itMask.IsAtBegin())
     {
       return true;
     }
@@ -110,9 +110,9 @@ public:
     return itMaskBeginChecker.Value() != 0;
   }
 
-  void IsAtEnd() const
+  bool IsAtEnd() const
   {
-    return this->Superclass::IsAtEnd() || m_itMask->IsAtEnd();
+    return this->Superclass::IsAtEnd() || m_itMask.IsAtEnd();
   }
 
   // Wrap the underlying iterator to ignore masked pixels
@@ -122,7 +122,7 @@ public:
     {
       this->Superclass::operator++();
       this->m_itMask.operator++();
-    } while (!this->IsAtEnd() && !m_itMask->IsAtEnd() && m_itMask->Value() == 0);
+    } while (!this->IsAtEnd() && !m_itMask.IsAtEnd() && m_itMask.Value() == 0);
     return *this;
   }
 

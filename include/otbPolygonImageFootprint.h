@@ -170,39 +170,24 @@ protected:
       bool regionNotEmpty = consideredRegion.Crop(threadRegion);
 
       otb::MaskedIteratorDecorator<itk::ImageRegionIterator<TInputImage> > it(m_mask, inputImage, consideredRegion);
-      it.SetMask(m_mask);
 
       if (regionNotEmpty)
       {
         //OGRPolygon* inPolygon = dynamic_cast<OGRPolygon *>(geom);
         //OGRLinearRing* exteriorRing = inPolygon->getExteriorRing();
-        // For pixels in consideredRegion
-        itk::ImageRegionIterator<TInputImage> itImage(inputImage, consideredRegion);
-        itk::ImageRegionIterator<TInputImage> itMask;
-        if (m_mask)
+        // For pixels in unmasked consideredRegion
+        for (it.GoToBegin(); !it.IsAtEnd(); ++it)
         {
-          itMask = itk::ImageRegionIterator<TInputImage>(m_mask, consideredRegion);
-        }
-        for (itImage.GoToBegin(); !itImage.IsAtEnd(); ++itImage)
-        {
-          if (m_mask)
-          {
-            ++itMask;
-          }
-          // If pixel is in mask
-          if (m_mask && itMask.Value() == 1)
-          {
-            itk::Point<double, 2> point;
-            inputImage->TransformIndexToPhysicalPoint(itImage.GetIndex(), point);
-            // ->Test if the current pixel is in a polygon hole
-            // If point is in feature
-            //if(exteriorRing->isPointInRing(&pointOGR, TRUE) && isNotInHole)
-            //{
-              // Count
-              //nbOfPixelsInGeom++;
-              //nbPixelsGlobal++;
-            //}
-          }
+          itk::Point<double, 2> point;
+          inputImage->TransformIndexToPhysicalPoint(it.GetIndex(), point);
+          // ->Test if the current pixel is in a polygon hole
+          // If point is in feature
+          //if(exteriorRing->isPointInRing(&pointOGR, TRUE) && isNotInHole)
+          //{
+            // Count
+            //nbOfPixelsInGeom++;
+            //nbPixelsGlobal++;
+          //}
         }
 
         //Class name recuperation
