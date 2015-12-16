@@ -23,9 +23,9 @@ public:
   MaskedIteratorDecorator(typename MaskType::Pointer mask,
                           typename ImageType::Pointer image,
                           BOOST_FWD_REF(T1) arg1):
-                            m_mask(mask),
                             TIteratorType(image,
                                           boost::forward<T1>(arg1)),
+                            m_mask(mask),
                             m_itMask(mask,
                                      boost::forward<T1>(arg1))
   {
@@ -37,10 +37,10 @@ public:
                           typename ImageType::Pointer image,
                           BOOST_FWD_REF(T1) arg1,
                           BOOST_FWD_REF(T2) arg2):
-                            m_mask(mask),
                             TIteratorType(image,
                                           boost::forward<T1>(arg1),
                                           boost::forward<T2>(arg2)),
+                            m_mask(mask),
                             m_itMask(mask,
                                      boost::forward<T1>(arg1),
                                      boost::forward<T2>(arg2))
@@ -55,21 +55,16 @@ public:
                           BOOST_FWD_REF(T1) arg1,
                           BOOST_FWD_REF(T2) arg2,
                           BOOST_FWD_REF(T3) arg3):
-                            m_mask(mask),
                             TIteratorType(image,
                                           boost::forward<T1>(arg1),
                                           boost::forward<T2>(arg2),
                                           boost::forward<T2>(arg3)),
+                            m_mask(mask),
                             m_itMask(mask,
                                      boost::forward<T1>(arg1),
                                      boost::forward<T2>(arg2),
                                      boost::forward<T3>(arg3))
   {
-  }
-
-  void SetMask(typename MaskType::Pointer mask)
-  {
-    m_mask = mask;
   }
 
   void GoToBegin()
