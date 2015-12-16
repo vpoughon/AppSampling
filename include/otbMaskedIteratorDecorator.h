@@ -6,28 +6,25 @@
 namespace otb
 {
 
-// Questions:
-// - how to redirect method calls to both iterators (image and mask) ?
-// - composition vs inheritance and public vs private
-// - GoToBegin implementation (first valid can be not first)
 template <typename TIteratorType>
-class MaskedIteratorDecorator : public TIteratorType
+class MaskedIteratorDecorator
 {
 public:
   typedef MaskedIteratorDecorator<TIteratorType> Self;
-  typedef TIteratorType                          Superclass;
-  typedef typename TIteratorType::ImageType      ImageType;
   typedef typename TIteratorType::ImageType      MaskType;
+  typedef typename TIteratorType::ImageType      ImageType;
+  typedef typename ImageType::IndexType          IndexType;
 
   template <typename T1>
   MaskedIteratorDecorator(typename MaskType::Pointer mask,
                           typename ImageType::Pointer image,
                           BOOST_FWD_REF(T1) arg1):
-                            TIteratorType(image,
-                                          boost::forward<T1>(arg1)),
                             m_mask(mask),
+                            m_image(image),
                             m_itMask(mask,
-                                     boost::forward<T1>(arg1))
+                                     boost::forward<T1>(arg1)),
+                            m_itImage(image,
+                                      boost::forward<T1>(arg1))
   {
   }
 
@@ -37,13 +34,14 @@ public:
                           typename ImageType::Pointer image,
                           BOOST_FWD_REF(T1) arg1,
                           BOOST_FWD_REF(T2) arg2):
-                            TIteratorType(image,
-                                          boost::forward<T1>(arg1),
-                                          boost::forward<T2>(arg2)),
                             m_mask(mask),
+                            m_image(image),
                             m_itMask(mask,
                                      boost::forward<T1>(arg1),
-                                     boost::forward<T2>(arg2))
+                                     boost::forward<T2>(arg2)),
+                            TIteratorType(image,
+                                          boost::forward<T1>(arg1),
+                                          boost::forward<T2>(arg2))
   {
   }
 
@@ -55,90 +53,96 @@ public:
                           BOOST_FWD_REF(T1) arg1,
                           BOOST_FWD_REF(T2) arg2,
                           BOOST_FWD_REF(T3) arg3):
-                            TIteratorType(image,
-                                          boost::forward<T1>(arg1),
-                                          boost::forward<T2>(arg2),
-                                          boost::forward<T2>(arg3)),
                             m_mask(mask),
+                            m_image(image),
                             m_itMask(mask,
                                      boost::forward<T1>(arg1),
                                      boost::forward<T2>(arg2),
-                                     boost::forward<T3>(arg3))
+                                     boost::forward<T3>(arg3)),
+                            TIteratorType(image,
+                                          boost::forward<T1>(arg1),
+                                          boost::forward<T2>(arg2),
+                                          boost::forward<T2>(arg3))
   {
+  }
+
+  IndexType GetIndex() const
+  {
+    return m_itMask.GetIndex();
   }
 
   void GoToBegin()
   {
-    //m_isAtBegin = true;
-    this->Superclass::GoToBegin();
-    this->m_itMask.GoToBegin();
-    while (!this->IsAtEnd() && !m_itMask.IsAtEnd() && m_itMask.Value() == 0)
-    {
-      this->Superclass::operator++();
-      this->m_itMask.operator++();
-    }
+    m_itMask.SetIndex(m_begin);
+    m_itImage.SetIndex(m_begin);
   }
 
   void GoToEnd()
   {
-    this->Superclass::GoToEnd();
-    this->m_itMask.GoToEnd();
+    m_itMask.GoToEnd();
+    m_itImage.GoToEnd();
   }
 
   bool IsAtBegin() const
   {
-    // Current position is the actual beginning
-    if (this->IsAtBegin() || m_itMask.IsAtBegin())
-    {
-      return true;
-    }
-
-    // Can be begin also if there are no unmasked pixel before current position
-    TIteratorType itBeginChecker(*this);
-    TIteratorType itMaskBeginChecker(m_itMask);
-    do
-    {
-      itBeginChecker--;
-      itMaskBeginChecker--;
-      if (itMaskBeginChecker.Value() == 0)
-      {
-        return false;
-      }
-    } while (!itBeginChecker.IsAtBegin() && !itMaskBeginChecker.IsAtBegin());
-
-    // True iff iterators' begin position is masked
-    return itMaskBeginChecker.Value() != 0;
+    return m_itMask.GetIndex() == m_begin || m_itImage.GetIndex() == m_begin;
   }
 
   bool IsAtEnd() const
   {
-    return this->Superclass::IsAtEnd() || m_itMask.IsAtEnd();
+    return m_itMask.IsAtEnd() || m_itImage.IsAtEnd();
   }
 
-  // Wrap the underlying iterator to ignore masked pixels
+  // Wrap the underlying iterators to skip masked pixels
   Self& operator++()
   {
     do
     {
-      this->Superclass::operator++();
-      this->m_itMask.operator++();
-    } while (!this->IsAtEnd() && !m_itMask.IsAtEnd() && m_itMask.Value() == 0);
+      ++m_itMask;
+      ++m_itImage;
+    } while (m_itMask.Value() == 0 && !this->IsAtEnd());
     return *this;
   }
 
+  // Wrap the underlying iterators to skip masked pixels
   Self & operator--()
   {
     do
     {
-      this->Superclass::operator--();
-      this->m_itMask.operator--();
-    } while (m_itMask->Value() == 0);
+      --m_itMask;
+      --m_itImage;
+    } while (m_itMask.Value() == 0 && !this->IsAtBegin());
     return *this;
   }
 
 private:
+  // Compute begin iterator position taking into account the mask
+  void ComputeMaskedBegin()
+  {
+    // Start at the iterator pair actual begin
+    m_itMask.GoToBegin();
+    m_itImage.GoToEnd();
+
+    // Advance to the first non-masked position, or the end
+    while (m_itMask.Value() == 0 && !m_itMask.IsAtEnd() && !m_itImage.IsAtEnd())
+    {
+      ++m_itMask;
+      ++m_itImage;
+    }
+    m_begin = m_itMask.GetIndex();
+  }
+
+private:
+  // Pointers to the image and the mask
   typename MaskType::Pointer m_mask;
+  typename ImageType::Pointer m_image;
+
+  // Current position
   TIteratorType m_itMask;
+  TIteratorType m_itImage;
+
+  // Unmasked bounds
+  IndexType m_begin;
 };
 
 }
