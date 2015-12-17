@@ -26,6 +26,7 @@ public:
                             m_itImage(image,
                                       boost::forward<T1>(arg1))
   {
+    ComputeMaskedBegin();
   }
 
   template <typename T1,
@@ -43,6 +44,7 @@ public:
                                           boost::forward<T1>(arg1),
                                           boost::forward<T2>(arg2))
   {
+    ComputeMaskedBegin();
   }
 
   template <typename T1,
@@ -64,6 +66,7 @@ public:
                                           boost::forward<T2>(arg2),
                                           boost::forward<T2>(arg3))
   {
+    ComputeMaskedBegin();
   }
 
   IndexType GetIndex() const
