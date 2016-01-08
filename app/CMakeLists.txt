@@ -28,7 +28,7 @@ OTB_CREATE_APPLICATION(NAME TrainRF
                        LINK_LIBRARIES ${${otb-module}_LIBRARIES}               
                       )
 
-OTB_CREATE_APPLICATION(NAME PolygonFootprint
-                       SOURCES polygonFootprint.cxx
+OTB_CREATE_APPLICATION(NAME PolygonClassStatistics
+                       SOURCES classStatistics.cxx
                        LINK_LIBRARIES ${${otb-module}_LIBRARIES}
                       )

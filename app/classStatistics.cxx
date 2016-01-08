@@ -16,7 +16,7 @@
  =========================================================================*/
 
 /*
- * The PolygonFootprint application exposes the PolygonImageFootprint filter
+ * The PolygonClassStatistics application exposes the PolygonClassStatisticsFilter
  * Inputs:
  *   - The image
  *   - The shapefile
@@ -28,7 +28,7 @@
  */
 
 #include "otbImage.h"
-#include "otbPolygonImageFootprint.h"
+#include "otbPolygonClassStatisticsFilter.h"
 #include "otbWrapperApplication.h"
 #include "otbWrapperApplicationFactory.h"
 #include "otbImageFileReader.h"
@@ -40,18 +40,18 @@ namespace otb
 namespace Wrapper
 {
   
-class PolygonFootprint : public Application
+class PolygonClassStatistics : public Application
 {
 public:
-  typedef PolygonFootprint Self;
+  typedef PolygonClassStatistics Self;
   typedef itk::SmartPointer<Self> Pointer; 
   itkNewMacro(Self);
-  itkTypeMacro(PolygonFootprint, otb::Application);
+  itkTypeMacro(PolygonClassStatistics, otb::Application);
   
 private:
   void DoInit()
   {
-    SetName("PolygonFootprints");
+    SetName("PolygonClassStatistics");
     SetDescription("");
     
     AddParameter(ParameterType_InputFilename, "image", "Input image");    
@@ -81,7 +81,7 @@ private:
     // Input mask
     //
 
-    typedef otb::PersistentFilterStreamingDecorator < PolygonImageFootprintFilter<ImageType, ImageType> > FilterType;
+    typedef otb::PersistentFilterStreamingDecorator < PolygonClassStatisticsFilter<ImageType, ImageType> > FilterType;
     FilterType::Pointer filter = FilterType::New();
 
     filter->GetFilter()->SetInput(reader->GetOutput());
@@ -97,4 +97,4 @@ private:
 }
 }
 
-OTB_APPLICATION_EXPORT(otb::Wrapper::PolygonFootprint)
+OTB_APPLICATION_EXPORT(otb::Wrapper::PolygonClassStatistics)

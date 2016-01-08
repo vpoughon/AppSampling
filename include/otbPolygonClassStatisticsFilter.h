@@ -1,5 +1,5 @@
-#ifndef __otbPolygonImageFootprint__
-#define __otbPolygonImageFootprint__
+#ifndef __otbPolygonClassStatistics__
+#define __otbPolygonClassStatistics__
 
 #include <map>
 #include "otbPersistentImageFilter.h"
@@ -11,11 +11,11 @@
 namespace otb
 {
 
-class PolygonImageFootprintStatistics : public itk::Object
+class PolygonClassStatisticsAccumulator : public itk::Object
 {
 public:
-  typedef PolygonImageFootprintStatistics Self;
-  typedef itk::SmartPointer<Self> Pointer;
+  typedef PolygonClassStatisticsAccumulator  Self;
+  typedef itk::SmartPointer<Self>            Pointer;
   itkNewMacro(Self);
    
   template <typename TInputImage>
@@ -46,7 +46,7 @@ public:
   }
 
 protected:
-  PolygonImageFootprintStatistics() {}
+  PolygonClassStatisticsAccumulator() {}
 
 private:
   //Number of pixels in all the polygons
@@ -57,18 +57,18 @@ private:
   std::map<unsigned long, int> m_polygon;
 
   // Not implemented
-  PolygonImageFootprintStatistics(const Self&);
+  PolygonClassStatisticsAccumulator(const Self&);
   void operator=(const Self&);
 };
 
 // how to make input mask optional wrt template params?
 // set a default type? use same type as image
 template <class TInputImage, class TInputMask>
-class ITK_EXPORT PolygonImageFootprintFilter :
+class ITK_EXPORT PolygonClassStatisticsFilter :
   public otb::PersistentImageFilter<TInputImage, TInputImage>
 {
 public:
-  typedef PolygonImageFootprintFilter<TInputImage, TInputMask> Self;
+  typedef PolygonClassStatisticsFilter<TInputImage, TInputMask> Self;
   typedef otb::PersistentImageFilter<TInputImage, TInputImage> Superclass;
   typedef itk::SmartPointer<Self> Pointer;
 
@@ -95,25 +95,25 @@ public:
   }
 
 public: // Software guide says this should be protected, but it won't compile
-  PolygonImageFootprintFilter() :
+  PolygonClassStatisticsFilter() :
     m_layerIndex(0)
   {
   }
 
-  virtual ~PolygonImageFootprintFilter() {}
+  virtual ~PolygonClassStatisticsFilter() {}
 
   void Reset()
   {
     unsigned int numberOfThreads = this->GetNumberOfThreads();
     
     // Reset list of individual containers
-    m_temporaryPolygonStatistics = std::vector<PolygonImageFootprintStatistics::Pointer>(numberOfThreads);
-    std::vector<PolygonImageFootprintStatistics::Pointer>::iterator it = m_temporaryPolygonStatistics.begin();
+    m_temporaryPolygonStatistics = std::vector<PolygonClassStatisticsAccumulator::Pointer>(numberOfThreads);
+    std::vector<PolygonClassStatisticsAccumulator::Pointer>::iterator it = m_temporaryPolygonStatistics.begin();
     for (; it != m_temporaryPolygonStatistics.end(); it++)
     {
-      *it = PolygonImageFootprintStatistics::New();
+      *it = PolygonClassStatisticsAccumulator::New();
     }
-    m_resultPolygonStatistics = PolygonImageFootprintStatistics::New();
+    m_resultPolygonStatistics = PolygonClassStatisticsAccumulator::New();
   }
 
   virtual void Synthetize() {}
@@ -211,10 +211,10 @@ private:
   otb::ogr::DataSource::Pointer m_polygons;
 
   // Temporary statistics
-  std::vector<PolygonImageFootprintStatistics::Pointer> m_temporaryPolygonStatistics;
+  std::vector<PolygonClassStatisticsAccumulator::Pointer> m_temporaryPolygonStatistics;
 
   // Final result
-  PolygonImageFootprintStatistics::Pointer m_resultPolygonStatistics;
+  PolygonClassStatisticsAccumulator::Pointer m_resultPolygonStatistics;
 
   // Layer to use in the shape file, default to 0
   vcl_size_t m_layerIndex;
@@ -222,6 +222,6 @@ private:
 
 } // namespace otb
 
-//#include "otbPolygonImageFootprint.txx"
+//#include "otbPolygonClassStatisticsFilter.txx"
 
 #endif
