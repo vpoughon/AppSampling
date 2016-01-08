@@ -55,12 +55,6 @@ private:
   std::map<int, int> m_elmtsInClass;
   //Number of pixels in each polygons
   std::map<unsigned long, int> m_polygon;
-  //Counter of pixels in the current polygon
-  std::map<unsigned long, int> m_counterPixelsInPolygon;
-  //Shifted counter of pixels in the current polygon
-  std::map<unsigned long, int> m_counterPixelsInPolygonShifted;
-  //RandomPosition of a sampled pixel for each polygons
-  std::map<unsigned long, int> m_randomPositionInPolygon;
 
   // Not implemented
   PolygonImageFootprintStatistics(const Self&);
@@ -68,7 +62,7 @@ private:
 };
 
 // how to make input mask optional wrt template params?
-// set a default type?
+// set a default type? use same type as image
 template <class TInputImage, class TInputMask>
 class ITK_EXPORT PolygonImageFootprintFilter :
   public otb::PersistentImageFilter<TInputImage, TInputImage>
