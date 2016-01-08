@@ -17,6 +17,33 @@ public:
   typedef PolygonImageFootprintStatistics Self;
   typedef itk::SmartPointer<Self> Pointer;
   itkNewMacro(Self);
+   
+  template <typename TInputImage>
+  void Add(otb::ogr::Layer::const_iterator& featIt,
+           otb::MaskedIteratorDecorator<itk::ImageRegionIterator<TInputImage> >& pixelIt)
+  {
+    //OGRPolygon* inPolygon = dynamic_cast<OGRPolygon *>(geom);
+    //OGRLinearRing* exteriorRing = inPolygon->getExteriorRing();
+      //itk::Point<double, 2> point;
+      //inputImage->TransformIndexToPhysicalPoint(it.GetIndex(), point);
+      // ->Test if the current pixel is in a polygon hole
+      // If point is in feature
+      //if(exteriorRing->isPointInRing(&pointOGR, TRUE) && isNotInHole)
+      //{
+      //}
+      // Count
+      //nbOfPixelsInGeom++;
+      //nbPixelsGlobal++;
+
+    //Class name recuperation
+    //int className = featIt->ogr().GetFieldAsInteger(GetParameterString("cfield").c_str());
+
+    //Counters update, number of pixel in each classes and in each polygons
+    //polygon[featIt->ogr().GetFID()] += nbOfPixelsInGeom;
+
+    //Generation of a random number for the sampling in a polygon where we only need one pixel, it's choosen randomly
+    //elmtsInClass[className] = elmtsInClass[className] + nbOfPixelsInGeom;
+  }
 
 protected:
   PolygonImageFootprintStatistics() {}
@@ -151,53 +178,29 @@ protected:
     return EnvelopeToRegion(image, envelope);
   }
 
-  void ThreadedGenerateData(const typename Self::OutputImageRegionType& threadRegion, itk::ThreadIdType)
+  void ThreadedGenerateData(const typename Self::OutputImageRegionType& threadRegion, itk::ThreadIdType threadId)
   {
     // Retrieve inputs
-    // const cast is nominal apparently
-    // raw pointer?
     TInputImage* inputImage = const_cast<TInputImage*>(this->GetInput());
 
     // Loop across the features in the layer (filtered by requested region in BeforeTGD already)
     otb::ogr::Layer::const_iterator featIt = m_polygons->GetLayer(m_layerIndex).begin(); 
     for(; featIt!=m_polygons->GetLayer(m_layerIndex).end(); featIt++)
     {
-      // Optimization: compute the intersection of thread region and polygon bounding region,
-      // called "considered region" here.
-      // This need not be done in ThreadedGenerateData and could be
-      // pre-processed and cached before filter execution if needed
+      // Compute the intersection of thread region and polygon bounding region, called "considered region"
+      // This need not be done in ThreadedGenerateData and could be pre-processed and cached before filter execution if needed
       typename TInputImage::RegionType consideredRegion = FeatureBoundingRegion(inputImage, *featIt);
       bool regionNotEmpty = consideredRegion.Crop(threadRegion);
 
-      otb::MaskedIteratorDecorator<itk::ImageRegionIterator<TInputImage> > it(m_mask, inputImage, consideredRegion);
-
       if (regionNotEmpty)
       {
-        //OGRPolygon* inPolygon = dynamic_cast<OGRPolygon *>(geom);
-        //OGRLinearRing* exteriorRing = inPolygon->getExteriorRing();
-        // For pixels in unmasked consideredRegion
+        // For pixels in consideredRegion and not masked
+        otb::MaskedIteratorDecorator<itk::ImageRegionIterator<TInputImage> > it(m_mask, inputImage, consideredRegion);
         for (it.GoToBegin(); !it.IsAtEnd(); ++it)
         {
-          itk::Point<double, 2> point;
-          inputImage->TransformIndexToPhysicalPoint(it.GetIndex(), point);
-          // ->Test if the current pixel is in a polygon hole
-          // If point is in feature
-          //if(exteriorRing->isPointInRing(&pointOGR, TRUE) && isNotInHole)
-          //{
-            // Count
-            //nbOfPixelsInGeom++;
-            //nbPixelsGlobal++;
-          //}
+          // add to thread statistics
+          m_temporaryPolygonStatistics[threadId]->Add(featIt, it);
         }
-
-        //Class name recuperation
-        //int className = featIt->ogr().GetFieldAsInteger(GetParameterString("cfield").c_str());
-
-        //Counters update, number of pixel in each classes and in each polygons
-        //polygon[featIt->ogr().GetFID()] += nbOfPixelsInGeom;
-
-        //Generation of a random number for the sampling in a polygon where we only need one pixel, it's choosen randomly
-        //elmtsInClass[className] = elmtsInClass[className] + nbOfPixelsInGeom;
       }
     }
   }
